@@ -34,6 +34,8 @@ int main(int, char **)
 
     // 画三角形主程序
     // drawColorfulTriangle(window);
-    drawPractice(window);
+    // drawPractice(window);
+    drawTexture(window);
+    drawTest(window);
     return 0;
 }

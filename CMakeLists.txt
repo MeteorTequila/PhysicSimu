@@ -12,6 +12,7 @@ find_package(glfw3 REQUIRED)
 # 第三方文件目录
 set(DEP_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 set(GLAD_INCLUDE "${DEP_INCLUDE}/glad/include")
+set(STBIMAGE_INCLUDE "${DEP_INCLUDE}/stbImage")
 
 # 设置源文件和头文件目录
 set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -21,7 +22,6 @@ set(INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 # 源文件集合和头文件集合
 file(GLOB SRC_DIR_FILES "${SRC_DIR}/*")
 file(GLOB INCLUDE_DIR_FILES "${INCLUDE_DIR}/*")
-
 
 # include(CTest)
 # enable_testing()
@@ -41,6 +41,7 @@ target_include_directories ( ${PROJECT_NAME}
         ${OPENGL_INCLUDE_DIR}
         ${EIGEN3_INCLUDE_DIRS}
         ${GLAD_INCLUDE}
+        ${STBIMAGE_INCLUDE}
 		
 )
 
