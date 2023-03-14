@@ -35,6 +35,9 @@ unsigned int loadCubemap(vector<std::string> faces);
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 
+// const unsigned int SCR_WIDTH = 800;
+// const unsigned int SCR_HEIGHT = 600;
+
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 float lastX = SCR_WIDTH / 2.0f;
@@ -471,6 +474,9 @@ void blendingTransparent(GLFWwindow *window)
 
 void frameBufferPrac(GLFWwindow *window)
 {
+    // 讲整个场景作为一个texture渲染在一个2维度平面上（通常覆盖整个窗口）
+    // 对这个二维平面的纹理进行操作，就可以实现全局性的颜色变化（如锐化，高斯模糊，反色，etc）
+
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
@@ -818,13 +824,22 @@ void skyBoxPrac(GLFWwindow *window)
 
     // cube VAO
     unsigned int cubeVAO, cubeVBO;
-    glGenVertexArrays(1, &cubeVAO);                                                                  // 创建1个VAO对象
-    glGenBuffers(1, &cubeVBO);                                                                       // 创建1个VBO对象
-    glBindVertexArray(cubeVAO);                                                                      // 分配VAO编号
-    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);                                                          // 绑定VBO对象，buffer形式为arry_buffer
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), &cubeVertices, GL_STATIC_DRAW);              // 设置VBO数据内容
-    glEnableVertexAttribArray(0);                                                                    // 允许Index为0的VAO对象附加数据
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);                   // VAO数据解析方式
+    glGenVertexArrays(1, &cubeVAO);                                                     // 创建1个VAO对象
+    glGenBuffers(1, &cubeVBO);                                                          // 创建1个VBO对象
+    glBindVertexArray(cubeVAO);                                                         // 分配VAO编号
+    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);                                             // 绑定VBO对象，buffer形式为arry_buffer
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), &cubeVertices, GL_STATIC_DRAW); // 设置VBO数据内容
+    glEnableVertexAttribArray(0);                                                       // 允许Index为0的VAO对象附加数据
+    // VAO数据解析方式
+    glVertexAttribPointer(
+        0,                 // 顶点属性的索引，从0开始
+        3,                 // 每个顶点属性数据的的维度
+        GL_FLOAT,          // 顶点属性数据的类型
+        GL_FALSE,          // 是否normlized
+        5 * sizeof(float), // 顶点属性数据的步长
+        (void *)0          // 顶点属性的第一个数据在总数组中的偏移量
+    );
+
     glEnableVertexAttribArray(1);                                                                    // 允许Index为1的VAO对象附加数据
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float))); // VAO数据解析方式
 
@@ -916,6 +931,153 @@ void skyBoxPrac(GLFWwindow *window)
     glDeleteBuffers(1, &skyboxVBO);
 }
 
+void instanceRender(GLFWwindow *window)
+{
+    // 设置摄像机位置
+    camera.Position = glm::vec3(0.0f, 50.0f, 155.0f);
+
+    // opengl状态配置（深度测试）
+    // -----------------------------
+    glEnable(GL_DEPTH_TEST);
+
+    // 编译shader
+    // -------------------------
+    Shader asteroidShader("../assets/shaders/multi_aster_instance/asteroid.vs", "../assets/shaders/multi_aster_instance/asteroid.fs");
+    Shader planetShader("../assets/shaders/multi_aster_instance/planet.vs", "../assets/shaders/multi_aster_instance/planet.fs");
+
+    // 载入模型
+    // -----------
+    Model rock("../assets/model/rock/rock.obj");
+    Model planet("../assets/model/planet/planet.obj");
+
+    // 构造大量的半随机模型变换矩阵
+    // ------------------------------------------------------------------
+    unsigned int amount = 10000;
+    glm::mat4 *modelMatrices;
+    modelMatrices = new glm::mat4[amount];           // 10000个模型变换矩阵
+    srand(static_cast<unsigned int>(glfwGetTime())); // 初始化随机种子
+    float radius = 80.0;
+    float offset = 10.0f;
+    for (unsigned int i = 0; i < amount; i++)
+    {
+        glm::mat4 model = glm::mat4(1.0f);
+        // 第一步：平移。 将物体放置在 radius-offset < radius < radius + offset的同心圆区间内
+        float angle = (float)i / (float)amount * 360.0f;
+        float displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+        float x = sin(angle) * radius + displacement;
+        displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+        float y = displacement * 0.4f; // keep height of asteroid field smaller compared to width of x and z
+        displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+        float z = cos(angle) * radius + displacement;
+        model = glm::translate(model, glm::vec3(x, y, z));
+
+        // 第二步：缩放。将astroid大小缩放在区间[0.05f, 0.25f]内
+        float scale = static_cast<float>((rand() % 20) / 100.0 + 0.05);
+        model = glm::scale(model, glm::vec3(scale));
+
+        // 第三步：旋转。给定一个轴，让astroid以随机的角速度旋转
+        float rotAngle = static_cast<float>((rand() % 360));
+        model = glm::rotate(model, rotAngle, glm::vec3(0.4f, 0.6f, 0.8f));
+
+        // 4. 更新model变换矩阵数组
+        modelMatrices[i] = model;
+    }
+
+    // 配置instance序列
+    // -------------------------
+    unsigned int buffer;
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glBufferData(GL_ARRAY_BUFFER, amount * sizeof(glm::mat4), &modelMatrices[0], GL_STATIC_DRAW);
+
+    // 为模型里每个mesh 传递model matrix
+    // -----------------------------------------------------------------------------------------------------------------------------------
+    for (unsigned int i = 0; i < rock.meshes.size(); i++)
+    {
+        unsigned int VAO = rock.meshes[i].VAO; // 获取model的第i个mesh数据
+        glBindVertexArray(VAO);
+        // 用4个vec4传递这个mat4类型
+
+        // 第一列
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)0);
+        // 第二列
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)(sizeof(glm::vec4)));
+        // 第三列
+        glEnableVertexAttribArray(5);
+        glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)(2 * sizeof(glm::vec4)));
+        // 第四列
+        glEnableVertexAttribArray(6);
+        glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)(3 * sizeof(glm::vec4)));
+
+        // 告诉OpenGL该什么时候更新顶点属性的内容至新一组数据
+        // 第二个参数设置为1时，渲染1个新instance时更新顶点属性。设置为2时，渲染每2个instance时更新顶点属性
+        glVertexAttribDivisor(3, 1);
+        glVertexAttribDivisor(4, 1);
+        glVertexAttribDivisor(5, 1);
+        glVertexAttribDivisor(6, 1);
+
+        glBindVertexArray(0);
+
+        // 循环渲染
+        // -----------
+        while (!glfwWindowShouldClose(window))
+        {
+            // 帧数计算
+            // --------------------
+            float currentFrame = static_cast<float>(glfwGetTime());
+            deltaTime = currentFrame - lastFrame;
+            lastFrame = currentFrame;
+
+            // input
+            // -----
+            processInput(window);
+
+            // render
+            // ------
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // 配置变换矩阵
+            glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
+            glm::mat4 view = camera.GetViewMatrix();
+            // 小行星的mvp配置
+            asteroidShader.use();
+            asteroidShader.setMat4("projection", projection);
+            asteroidShader.setMat4("view", view);
+            // planet的mvp配置
+            planetShader.use();
+            planetShader.setMat4("projection", projection);
+            planetShader.setMat4("view", view);
+
+            // 渲染planet
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(0.0f, -3.0f, 0.0f));
+            model = glm::scale(model, glm::vec3(4.0f, 4.0f, 4.0f));
+            planetShader.setMat4("model", model);
+            planet.Draw(planetShader);
+
+            // 渲染小行星带
+            asteroidShader.use();
+            asteroidShader.setInt("texture_diffuse1", 0);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, rock.textures_loaded[0].id); // note: we also made the textures_loaded vector public (instead of private) from the model class.
+            for (unsigned int i = 0; i < rock.meshes.size(); i++)
+            {
+                glBindVertexArray(rock.meshes[i].VAO);
+                glDrawElementsInstanced(GL_TRIANGLES, static_cast<unsigned int>(rock.meshes[i].indices.size()), GL_UNSIGNED_INT, 0, amount);
+                glBindVertexArray(0);
+            }
+
+            // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+            // -------------------------------------------------------------------------------
+            glfwSwapBuffers(window);
+            glfwPollEvents();
+        }
+    }
+}
+
 // 封装的载入纹理方法
 // ---------------------------------------------------------------------------------------------
 unsigned int loadTexture(char const *path)
@@ -997,7 +1159,7 @@ unsigned int loadCubemap(vector<std::string> faces)
     return textureID;
 }
 
-// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
+// 处理所有的输入事件，使用GLFW查询当前哪些键被按下或者松开，并且对应的产生效果
 // ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window)
 {
@@ -1027,7 +1189,7 @@ void processInput(GLFWwindow *window)
     }
 }
 
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+// 当窗口大小发生变化时，GLFW执行这个函数
 // ---------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
@@ -1036,7 +1198,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-// glfw: whenever the mouse moves, this callback is called
+// 当鼠标移动时，GLFW执行这个函数
 // -------------------------------------------------------
 void mouse_callback(GLFWwindow *window, double xposIn, double yposIn)
 {
@@ -1059,7 +1221,7 @@ void mouse_callback(GLFWwindow *window, double xposIn, double yposIn)
     camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-// glfw: whenever the mouse scroll wheel scrolls, this callback is called
+// 当鼠标滚轮移动时，GLFW执行这个函数
 // ----------------------------------------------------------------------
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {

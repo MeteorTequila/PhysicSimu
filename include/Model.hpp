@@ -72,6 +72,7 @@ private:
         directory = path.substr(0, path.find_last_of('/'));
 
         // process ASSIMP's root node recursively
+        // 递归的处理assimp中的根节点
         processNode(scene->mRootNode, scene);
     }
 
@@ -92,7 +93,6 @@ private:
             processNode(node->mChildren[i], scene);
         }
     }
-
 
     Mesh processMesh(aiMesh *mesh, const aiScene *scene)
     {
@@ -128,12 +128,12 @@ private:
                 vec.x = mesh->mTextureCoords[0][i].x;
                 vec.y = mesh->mTextureCoords[0][i].y;
                 vertex.TexCoords = vec;
-                // tangent
+                // tangent（切线空间）
                 vector.x = mesh->mTangents[i].x;
                 vector.y = mesh->mTangents[i].y;
                 vector.z = mesh->mTangents[i].z;
                 vertex.Tangent = vector;
-                // bitangent
+                // bitangent（切线空间）
                 vector.x = mesh->mBitangents[i].x;
                 vector.y = mesh->mBitangents[i].y;
                 vector.z = mesh->mBitangents[i].z;
@@ -152,7 +152,7 @@ private:
             for (unsigned int j = 0; j < face.mNumIndices; j++)
                 indices.push_back(face.mIndices[j]);
         }
-        
+
         // process materials
 
         aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];

@@ -14,7 +14,9 @@
 // #include "ModelViewer.hpp"
 
 // #include "SimuCore.hpp"
-#include "AdvanceOpenGL.hpp"
+// #include "AdvanceOpenGL.hpp"
+#include "AdvanceIllumination.hpp"
+// #include "ModernOpenGL.hpp"
 
 int main(int, char **)
 {
@@ -66,7 +68,14 @@ int main(int, char **)
   // stencilBuffer(window);
   // blendingTransparent(window);
   // frameBufferPrac(window);
-  skyBoxPrac(window);
+  // skyBoxPrac(window);
+  // instanceRender(window);
+  // blinnPhong(window);
+  // shadowTexture(window);
+
+  // shadowTextureBox(window);
+  // normalTextureBox(window);
+  parallaxMappingQuad(window);
 
   glfwTerminate();
   return 0;
