@@ -12,5 +12,5 @@ void main()
     // 移除了model矩阵，因为skybox并不会根据camera的移动改变相对关系
     TexCoords = aPos;
     vec4 pos = projection * view * vec4(aPos, 1.0);
-    gl_Position = pos.xyww;
+    gl_Position = pos.xyww;//pos=(x,y,1,1)
 }  

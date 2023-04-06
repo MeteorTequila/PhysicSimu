@@ -16,6 +16,7 @@
 // #include "SimuCore.hpp"
 // #include "AdvanceOpenGL.hpp"
 #include "AdvanceIllumination.hpp"
+// #include "testDeferredRendering.hpp"
 // #include "ModernOpenGL.hpp"
 
 int main(int, char **)
@@ -75,7 +76,14 @@ int main(int, char **)
 
   // shadowTextureBox(window);
   // normalTextureBox(window);
-  parallaxMappingQuad(window);
+  // parallaxMappingQuad(window);
+  // hdrRender(window);
+  // testsss(window);
+  hdrRender(window);
+
+  // testHDR(window);
+  // deferredRender(window);
+  // testDeferred(window);
 
   glfwTerminate();
   return 0;
